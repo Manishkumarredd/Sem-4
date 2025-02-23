@@ -1,0 +1,108 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.cluster import KMeans
+from sklearn.metrics import (
+    mean_squared_error, mean_absolute_percentage_error, r2_score,
+    silhouette_score, calinski_harabasz_score, davies_bouldin_score
+)
+
+# A1: Load dataset and filter relevant data
+data = pd.read_excel("/content/Judgment_Embeddings_InLegalBERT.xlsx")
+data = data[data["Label"].isin([0, 1])]  # Keep only binary labels
+X_data = data.drop(columns=["Label"]).values
+y_data = data["Label"].values
+
+# A1: Split dataset into training and test sets
+X_train, X_eval, y_train, y_eval = train_test_split(X_data, y_data, test_size=0.2)
+
+# A1: Train Linear Regression model with a single feature
+X_train_single = X_train[:, [0]]  # Selecting one attribute for training
+X_eval_single = X_eval[:, [0]]
+
+lin_reg_single = LinearRegression().fit(X_train_single, y_train)
+y_train_pred_single = lin_reg_single.predict(X_train_single)
+y_eval_pred_single = lin_reg_single.predict(X_eval_single)
+
+# A2: Function to evaluate regression performance
+def evaluate_model(y_real, y_forecast, dataset_name):
+    mse_val = mean_squared_error(y_real, y_forecast)
+    rmse_val = np.sqrt(mse_val)
+    mape_val = mean_absolute_percentage_error(y_real, y_forecast)
+    r2_val = r2_score(y_real, y_forecast)
+    
+    print(f"{dataset_name} Set Evaluation:")
+    print(f"MSE: {mse_val:.2f}")
+    print(f"RMSE: {rmse_val:.2f}")
+    print(f"MAPE: {mape_val:.2f}")
+    print(f"R2 Score: {r2_val:.2f}\n")
+
+# A2: Compute regression metrics for one feature
+evaluate_model(y_train, y_train_pred_single, "Training (Single Feature)")
+evaluate_model(y_eval, y_eval_pred_single, "Testing (Single Feature)")
+
+# A3: Train Linear Regression model with all features
+lin_reg_full = LinearRegression().fit(X_train, y_train)
+y_train_pred_full = lin_reg_full.predict(X_train)
+y_eval_pred_full = lin_reg_full.predict(X_eval)
+
+# A3: Compute regression metrics for all features
+evaluate_model(y_train, y_train_pred_full, "Training (All Features)")
+evaluate_model(y_eval, y_eval_pred_full, "Testing (All Features)")
+
+# A4: KMeans Clustering (k=2)
+clusters = 2
+kmeans_algo = KMeans(n_clusters=clusters, random_state=0, n_init="auto").fit(X_train)
+labels = kmeans_algo.labels_
+
+# A5: Compute clustering metrics
+sil_score = silhouette_score(X_train, labels)
+cal_har_score = calinski_harabasz_score(X_train, labels)
+dav_boul_score = davies_bouldin_score(X_train, labels)
+
+print(f"Silhouette Score (k=2): {sil_score}")
+print(f"Calinski-Harabasz Score (k=2): {cal_har_score}")
+print(f"Davies-Bouldin Index (k=2): {dav_boul_score}\n")
+
+# A6: KMeans Clustering for different values of k
+silhouette_vals, ch_vals, db_vals = [], [], []
+k_max = 20
+
+for k in range(2, k_max):
+    kmeans_iter = KMeans(n_clusters=k, random_state=0, n_init="auto").fit(X_train)
+    silhouette_vals.append(silhouette_score(X_train, kmeans_iter.labels_))
+    ch_vals.append(calinski_harabasz_score(X_train, kmeans_iter.labels_))
+    db_vals.append(davies_bouldin_score(X_train, kmeans_iter.labels_))
+
+# A6: Plot clustering metrics
+plt.plot(range(2, k_max), silhouette_vals, marker='o', linestyle='-')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Silhouette Score')
+plt.title('Silhouette Score vs. k')
+plt.show()
+
+plt.plot(range(2, k_max), ch_vals, marker='o', linestyle='-')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Calinski-Harabasz Score')
+plt.title('Calinski-Harabasz Score vs. k')
+plt.show()
+
+plt.plot(range(2, k_max), db_vals, marker='o', linestyle='-')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Davies-Bouldin Index')
+plt.title('Davies-Bouldin Index vs. k')
+plt.show()
+
+# A7: Elbow Method for optimal k selection
+inertia_vals = []
+for k in range(2, 20):
+    kmeans_model = KMeans(n_clusters=k, random_state=0, n_init="auto").fit(X_train)
+    inertia_vals.append(kmeans_model.inertia_)
+
+plt.plot(range(2, 20), inertia_vals, marker='o')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Inertia')
+plt.title('Elbow Method for Optimal K')
+plt.show()
